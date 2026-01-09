@@ -3,3 +3,5 @@
 *.csv
 *.json
 avalanchesize-counts/
+*~
+__pycache__
