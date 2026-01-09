@@ -16,6 +16,7 @@ def plot_aval_distribution(fibers = [100000],
                            distributions=["uniform"],
                            individ_mode="hist",
                            basis=1.125,
+                           master=False,
                            power_exp=None):
     """
     Reads the avalanche data previously created by get_aval_count and creates 
@@ -57,16 +58,21 @@ def plot_aval_distribution(fibers = [100000],
 
     #
     colors = plt.get_cmap("inferno")
-
+    #
     list_prefac = []
     cs = []
     ns = []
-
+    #
+    if master:
+        fig,ax = plt.subplots(1,1,
+                              sharex=True,sharey=False,
+                              figsize=(9,12))
     for distribution,fiber in product(distributions,fibers):
-
-        fig,axs = plt.subplots(len(temperatures),1,
-                               sharex=True,sharey=False,
-                               figsize=(9,12))
+        
+        if not master:
+            fig,axs = plt.subplots(len(temperatures),1,
+                                   sharex=True,sharey=False,
+                                   figsize=(9,12))
 
         combinations = list(product(loads,temperatures,ks))
         j = 0
@@ -109,7 +115,7 @@ def plot_aval_distribution(fibers = [100000],
 
                 # normalize by bin width and that everything adds up to one
                 hist = hist/(np.ceil(edges[1:])-np.ceil(edges[:-1]))
-                hist = hist/np.sum(hist)
+                hist_norm = hist/np.sum(hist)
 
                 # stuff needed for the scales of the plot later
                 if loads.index(load) == 0:
@@ -123,46 +129,60 @@ def plot_aval_distribution(fibers = [100000],
                 _max = np.max(edges)
                 if max < _max:
                     max = _max
-
-                axs[row].scatter(x = (edges[1:] + edges[:-1])/2,
-                                 y = hist,
-                                 s=10.,
-                                 color = colors(loads.index(load)/(len(loads)-1) * 0.9),
-                                 label=str(np.round(load,3)))
+                
+                if not master:
+                    axs[row].scatter(x = (edges[1:] + edges[:-1])/2,
+                                     y = hist_norm,
+                                     s=10.,
+                                     color = colors(loads.index(load)/(len(loads)-1) * 0.9),
+                                     label=str(np.round(load,3)))
 
                 # use only a subportion of the data for fitting
                 x = (edges[1:] + edges[:-1])/2
                 mask = (x > bound)
-                x,hist = x[mask],hist[mask]
+                _x = x[mask]
 
                 if power_exp is None:
-                    x = np.column_stack((x,np.log(x)))
-                    y=-np.log(hist)
+                    _x = np.column_stack((_x,np.log(_x)))
+                    y=-np.log(hist_norm[mask])
                 else:
-                    y = -np.log(hist * x**power_exp)
-                    x = x[:,None]
+                    y = -np.log(hist_norm[mask] * _x**power_exp)
+                    _x = _x[:,None]
 
                 # precalculate for intercept
-                x_offset = np.mean(x,axis=0)
+                x_offset = np.mean(_x,axis=0)
                 y_offset = np.average(y, axis=0)
 
                 # solve non negative least squares to get weights
-                weights,residual = nnls(x-x_offset,
+                weights,residual = nnls(_x-x_offset,
                                         y-y_offset)
                 
                 # calculate final parameters
                 prefac = y_offset - np.dot(x_offset,weights)
                 prefac = np.exp(-prefac)
                 if power_exp is None:
-                    x = x[:,0]
+                    _x = _x[:,0]
                     c,n = weights
                 else:
                     c,n = weights[0],power_exp
                     
                 #
-                axs[row].plot(x,prefac*np.exp(-c*x)*x**(-n),
-                              color = colors(loads.index(load)/(len(loads)-1) * 0.9),
-                              linestyle="--")
+                if not master:
+                    axs[row].plot(_x,prefac*np.exp(-c*_x)*_x**(-n),
+                                  color = colors(loads.index(load)/(len(loads)-1) * 0.9),
+                                  linestyle="--")
+                else:
+                    _x = (edges[1:] + edges[:-1])/2
+                    ax.scatter(x = _x,
+                               y =  hist_norm/prefac,
+                               s=10.,
+                               color = colors(loads.index(load)/(len(loads)-1) * 0.9),
+                               label=str(np.round(load,3)),
+                               marker=markers[temperatures.index(t)])
+                #else:
+                #    ax.plot(_x,prefac*np.exp(-c*_x)*_x**(-n),
+                #            color = colors(loads.index(load)/(len(loads)-1) * 0.9),
+                #            linestyle="--")
                 list_prefac.append(prefac),ns.append(n),cs.append(c)
                 print(f"prefac.: {prefac}, exp. decay {c}, pow. law exp. {n}\n")
 
@@ -178,7 +198,9 @@ def plot_aval_distribution(fibers = [100000],
                 axs[row].scatter(avsize,probs,
                                  s=0.5,
                                  label=r"$T$ "+str(t)+r" ,$\sigma_{0}$ "+str(np.round(load,3))) 
-
+            #
+            if master:
+                continue
             #
             axs[row].set_xscale("log")
             axs[row].set_yscale("log")
@@ -194,7 +216,9 @@ def plot_aval_distribution(fibers = [100000],
                 axs[row].set_xlabel(r"aval. size $\Delta$",fontsize=font)
             if loads.index(load) == 0:
                 axs[row].set_ylabel(r"P($\Delta$)",fontsize=font)
-
+            #
+            if master:
+                continue
             #
             j += 1
             if j%(len(temperatures)*len(loads))==0 and j!=0:
@@ -241,7 +265,51 @@ def plot_aval_distribution(fibers = [100000],
                 else:
                     ValueError("individ_mod must be either 'hist' or scatter.load mode is: ",individ_mode)
                 plt.show()
-
+    if master:
+        # create custom legend
+        leg = []
+        for ind in range(len(loads)):
+            leg.append(mlines.Line2D([], [],
+                                     color=colors(ind/(len(loads)-1) * 0.95),
+                                     label=str(np.round(loads[ind],3))))
+        leg = ax.legend(loc='upper left',
+                        handles=leg,
+                        bbox_to_anchor=(1, 0.5),
+                        fontsize=font, markerscale=3,
+                        title=r"$f_{0}$",
+                        title_fontsize=font,
+                        frameon=False)
+        ax.add_artist(leg)
+        leg = []
+        for ind in range(len(temperatures)):
+            leg.append(mlines.Line2D([], [],
+                                     marker=markers[ind],
+                                     color="gray",linestyle='None',
+                                     label=str(np.round(temperatures[ind],3))))
+        ax.legend(loc='lower left',
+                  handles=leg,
+                  bbox_to_anchor=(1, 0.5),
+                  fontsize=font, markerscale=3,
+                  title=r"$T$",
+                  title_fontsize=font,
+                  frameon=False)
+        # set scale, etc.
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        #
+        ax.tick_params(axis='both',
+                       which='major',
+                       labelsize=small_font)
+        #
+        ax.set_xlabel(r"aval. size $\Delta$",fontsize=font)
+        ax.set_ylabel(r"P($\Delta$)/$\Delta_0$",fontsize=font)
+        #
+        plt.savefig("global-aval-master-basis"+str(basis)+"_dist_"+name+".pdf",
+                    format="pdf",bbox_inches="tight")
+        #
+        plt.show()
+        plt.close()
+        
     with open("avalanche-parameter.json","w") as f:
         json.dump({"params":combinations,
                    "a":list_prefac,
@@ -334,12 +402,13 @@ if __name__ == "__main__":
                                     [0.125,0.15,0.175,0.2,0.225]],
                                    [ ["weibull"],["uniform"] ]):
         
-        get_aval_count(loads=loads, 
-                       distributions=distributions)
+        #get_aval_count(loads=loads, 
+        #               distributions=distributions)
         plot_aval_distribution(fibers = [100000],
                                loads=loads,
                                temperatures=[0.05,0.1,0.15],
                                ks=[1],
                                distributions=distributions,
                                individ_mode="hist",
-                               power_exp=None) # set this to 2.5 to recreate plots in paper.
+                               power_exp=2.5,
+                               master=True) # set this to 2.5 to recreate plots in paper.

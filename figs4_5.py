@@ -201,7 +201,8 @@ def moment_plot(dist="uniform",
         n_v_err = res_pow.stderr
 
         xtrans = (np.exp(res_pow.intercept)/c_v)**(1/(-res_pow.slope-n_v))
-
+        if temp==0.15 and dist=="weibull":
+            print(res_pow.intercept, res_pow.slope)
         print(load,temp,k,c_v,n_v,xtrans)
 
         # save fit parameter
@@ -212,8 +213,8 @@ def moment_plot(dist="uniform",
                     X=[mean[mask][-1],n_v,n_v_err],
                     header="plateau value ,exponent variance,exponent variance stderr",
                     delimiter=',')
-
-
+        
+        #
         axs[1].plot([xtrans,np.max(x)],
                   power_law(np.array([xtrans,np.max(x)]),
                              c_v, n_v),
@@ -302,9 +303,8 @@ if __name__ == "__main__":
                         1000,2000,4000,6000,8000,10000,20000,100000])
     
     moment_plot(dist="weibull",
-                loads=np.array([0.5, 0.6, 0.5])*np.exp(-1),
-                fibers=[10,
-                        11,12,13,14,15,16,17,18,19,20,
+                loads=np.array([0.5, 0.6, 0.7])*np.exp(-1),
+                fibers=[10,11,12,13,14,15,16,17,18,19,20,
                         30,40,50,60,70,80,90,100,200,400,600,800,
                         1000,2000,4000,6000,8000,
                         10000,20000,100000])
