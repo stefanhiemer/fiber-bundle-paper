@@ -181,10 +181,26 @@ def submit_jobs(nbundles,
     return
 
 if __name__ == "__main__":
-
-    submit_jobs(nbundles = 10000,
+    submit_jobs(nbundles = 10,
+                dists = ["weibull"],
+                fibers = [10,11,12,13,14,15,16,17,18,19,20,
+                          30,40,50,60,70,80,90,100,200,400,600,800,
+                          1000,2000,4000,6000,8000,10000,20000,100000],
+                ks = [1],
+                temperatures = [0.05,0.1,0.15],
+                loads = np.array([0.5, 0.6, 0.7])*np.exp(-1),
+                h5file="fiber-bundles.h5",
+                n_samples=1,
+                offset = 0 ,
+                _seed = 0)
+    import sys 
+    sys.exit()
+    submit_jobs(nbundles = 10,
                 dists = ["uniform"],
-                fibers = [2,3,4,5,6,7,8,9],
+                fibers = [1,2,3,4,5,6,7,8,9,10,
+                          11,12,13,14,15,16,17,18,19,20,
+                          30,40,50,60,70,80,90,100,200,400,600,800,
+                          1000,2000,4000,6000,8000,10000,20000,100000],
                 ks = [1],
                 temperatures = [0.05,0.1,0.15],
                 loads = [0.125,0.15,0.175],
