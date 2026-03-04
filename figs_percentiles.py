@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from read_h5 import read_h5 
 
-def percentile_plot(dist="uniform",
+def percentile_plot(npercentiles,
+                    dist="uniform",
                     loads=[0.125, 0.15, 0.175],
                     temps=[0.05,0.1,0.15],
                     ks = [1],
@@ -16,8 +17,7 @@ def percentile_plot(dist="uniform",
                             1000,2000,4000,6000,8000,10000,20000,100000], 
                     h5file="fiber-bundles.h5"):
     """
-    Plot Fig. 4 and 5. in paper. 
-    
+    Plot Fig. 4 and 5 in paper.
     
     In the first run, the test percentiles for all 
     combinations of the parameters loads,temps,ks and fibers are calculated 
@@ -62,12 +62,15 @@ def percentile_plot(dist="uniform",
         # load already calculated values
         combs = np.loadtxt("comb-percentiles_"+dist+".csv")
         percentiles = np.loadtxt("percentiles_"+dist+".csv")
-
+        #
+        assert np.allclose(combs, 
+                           np.loadtxt("comb-percentiles_"+dist+".csv"))
+        means = np.loadtxt("mean-comparison_"+dist+".csv")
+        var = np.loadtxt("var-comparison_"+dist+".csv")
         #
         _combs = list(product(loads,temps,ks,fibers))
         mask,indices = find_matching_rows(A=np.array(_combs),
                                           B=combs)
-
         #
         _percentiles = []
         ind = 0
@@ -94,7 +97,9 @@ def percentile_plot(dist="uniform",
 
                 #
                 _percentiles.append(np.percentile(lifetimes,
-                                                  np.linspace(0,100,101)))
+                                                  np.linspace(0,
+                                                              npercentiles,
+                                                              npercentiles+1)))
             #
             ind += 1
 
@@ -102,7 +107,6 @@ def percentile_plot(dist="uniform",
         combs = np.array(combs).astype(float)
         percentiles = np.array(percentiles)
     else:
-
         combs = list(product(loads,temps,ks,fibers))
         percentiles = []
 
@@ -120,7 +124,9 @@ def percentile_plot(dist="uniform",
 
             #
             percentiles.append(np.percentile(lifetimes,
-                                             np.linspace(0,100,101)))
+                                             np.linspace(0,
+                                                         npercentiles,
+                                                         npercentiles+1)))
 
         #
         combs = np.array(combs).astype(float)
@@ -137,8 +143,9 @@ def percentile_plot(dist="uniform",
     #
     _loads,_temps,_ks,_fibers = combs[:,0],combs[:,1],combs[:,2],combs[:,3]
     # create two fig
+    import sys 
+    sys.exit()
     fig,axs = plt.subplots(1,2,figsize=(15, 10))
-
     # each temperature-load combination gets its own color
     i = 0
     for load,temp,k in product(loads,temps,ks):
@@ -147,12 +154,14 @@ def percentile_plot(dist="uniform",
         mask = (_temps == temp) & (_loads==load)
 
         # plot data points
-        axs[0].scatter(_fibers[mask],percentiles[mask,1],
+        axs[0].scatter(_fibers[mask],
+                       percentiles[mask,1],
                        color=colors(i),
-                       label=str(temp)+", $ "+str(np.round(load,3)))
-        axs[1].scatter(_fibers[mask],percentiles[mask,1],
+                       label=str(temp)+", "+str(np.round(load,3)))
+        axs[1].scatter(_fibers[mask],
+                       percentiles[mask,1],
                        color=colors(i),
-                       label=str(temp)+", $ "+str(np.round(load,3)))
+                       label=str(temp)+", "+str(np.round(load,3)))
         i += 1
 
     #
@@ -235,14 +244,16 @@ def find_matching_rows(A, B):
     return mask, np.array(indices)
 
 if __name__ == "__main__":
-    percentile_plot(dist="uniform",
+    percentile_plot(10, 
+                    dist="uniform",
                    loads=[0.125, 0.15, 0.175],
                    fibers=[1,2,3,4,5,6,7,8,9,10,
                         11,12,13,14,15,16,17,18,19,20,
                         30,40,50,60,70,80,90,100,200,400,600,800,
                         1000,2000,4000,6000,8000,10000,20000,100000])
     
-    percentile_plot(dist="weibull",
+    percentile_plot(10, 
+                    dist="weibull",
                 loads=np.array([0.5, 0.6, 0.7])*np.exp(-1),
                 fibers=[10,11,12,13,14,15,16,17,18,19,20,
                         30,40,50,60,70,80,90,100,200,400,600,800,

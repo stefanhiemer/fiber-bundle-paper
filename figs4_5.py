@@ -7,6 +7,9 @@ from scipy.stats import linregress
 import matplotlib.pyplot as plt 
 from read_h5 import read_h5 
 
+def power_law(x,c0,n):
+    return c0/(x**(n))
+
 def moment_plot(dist="uniform",
                 loads=[0.125, 0.15, 0.175],
                 temps=[0.05,0.1,0.15],
@@ -17,7 +20,7 @@ def moment_plot(dist="uniform",
                         1000,2000,4000,6000,8000,10000,20000,100000], 
                 h5file="fiber-bundles-safe.h5"):
     """
-    Plot Fig. 3 in paper. 
+    Plot Fig. 4 and 5 in paper. 
     
     
     In the first run, the mean and variances for all 
@@ -212,9 +215,9 @@ def moment_plot(dist="uniform",
         
         #
         axs[1].plot([xtrans,np.max(x)],
-                  power_law(np.array([xtrans,np.max(x)]),
+                    power_law(np.array([xtrans,np.max(x)]),
                              c_v, n_v),
-                  color=colors(i),linestyle=":")
+                    color=colors(i),linestyle=":")
 
         i += 1
 

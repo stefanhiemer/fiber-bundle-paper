@@ -193,8 +193,6 @@ if __name__ == "__main__":
                 n_samples=1,
                 offset = 0 ,
                 _seed = 0)
-    import sys 
-    sys.exit()
     submit_jobs(nbundles = 10,
                 dists = ["uniform"],
                 fibers = [1,2,3,4,5,6,7,8,9,10,
