@@ -2,7 +2,7 @@ import os
 from itertools import product
 
 import numpy as np 
-from scipy.stats import shapiro,anderson,kstest
+from scipy.stats import shapiro,anderson,kstest,wasserstein
 
 import matplotlib.pyplot as plt 
 from read_h5 import read_h5 
@@ -63,12 +63,15 @@ def normality_plot(dist="uniform",
         # load already calculated values
         combs = np.loadtxt("comb-normality_"+dist+".csv")
         statistics = np.loadtxt("normality_"+dist+".csv")
-
+        #
+        assert np.allclose(combs, np.loadtxt("comb-comparison_"+dist+".csv"))
+        #
+        mean = np.loadtxt("mean-comparison_"+dist+".csv")
+        var = np.loadtxt("var-comparison_"+dist+".csv")
         #
         _combs = list(product(loads,temps,ks,fibers))
         mask,indices = find_matching_rows(A=np.array(_combs),
                                           B=combs)
-
         #
         _statistics = []
         ind = 0
@@ -96,7 +99,13 @@ def normality_plot(dist="uniform",
                 #
                 _statistics.append(shapiro(x=lifetimes,
                                            nan_policy="omit")+\
-                                   anderson(lifetimes))
+                                   anderson(lifetimes,
+                                            dist="norm", 
+                                            method="interpolated")+\
+                                   kstest(rvs=lifetimes,
+                                          method="exact",
+                                          alternative="two-sided",
+                                          nan_policy="omit"))
             #
             ind += 1
 
@@ -104,10 +113,8 @@ def normality_plot(dist="uniform",
         combs = np.array(combs).astype(float)
         statistics = np.array(statistics)
     else:
-
         combs = list(product(loads,temps,ks,fibers))
         statistics = []
-
         for load,temp,k,fiber in combs:
             #
             timeseries,n_fibers,aval = read_h5(fibers=fiber,
@@ -119,10 +126,19 @@ def normality_plot(dist="uniform",
                                                subset=None)
             # extract lifetimes
             lifetimes = np.array([t[0][-1] for t in timeseries])
-
             #
-            statistics.append(shapiro(lifetimes))
-
+            _statistics.append(shapiro(x=lifetimes,
+                                       nan_policy="omit")+\
+                               anderson(lifetimes,
+                                        dist="norm", 
+                                        method="interpolated")+\
+                               kstest(rvs=lifetimes,
+                                      method="exact",
+                                      alternative="two-sided",
+                                      nan_policy="omit"))
+        #
+        mean = np.loadtxt("mean-comparison_"+dist+".csv")
+        var = np.loadtxt("var-comparison_"+dist+".csv")
         #
         combs = np.array(combs).astype(float)
 
@@ -132,7 +148,9 @@ def normality_plot(dist="uniform",
         np.savetxt("comb-normality_"+dist+".csv",combs,
                    header="load,temp,k,fiber")
         np.savetxt("normality_"+dist+".csv", statistics,
-                   header="shapiro-wilkinson statistic,shapiro-wilkinson p-value")
+                   header="shapiro-wilkinson statistic,shapiro-wilkinson p-value"+\
+                          "anderson statistic,anderson p-value"+\
+                          "")
     #
     N = np.arange(1,np.max(fibers)+1)
     #
@@ -147,15 +165,21 @@ def normality_plot(dist="uniform",
         # create mask
         mask = (_temps == temp) & (_loads==load)
 
-        # plot data points
+        # plot shapiro
         axs[0].scatter(_fibers[mask],statistics[mask,1],
                        color=colors(i),
-                       label=str(temp)+", $ "+str(np.round(load,3)))
+                       label=str(temp)+", "+str(np.round(load,3)))
         axs[1].scatter(_fibers[mask],statistics[mask,1],
                        color=colors(i),
-                       label=str(temp)+", $ "+str(np.round(load,3)))
+                       label=str(temp)+", "+str(np.round(load,3)))
+        # plot anderson
+        axs[0].scatter(_fibers[mask],statistics[mask,3],
+                       color=colors(i),
+                       label=str(temp)+", "+str(np.round(load,3)))
+        axs[1].scatter(_fibers[mask],statistics[mask,3],
+                       color=colors(i),
+                       label=str(temp)+", "+str(np.round(load,3)))
         i += 1
-
     #
     axs[0].set_xlim(left=np.min(fibers)*0.9,
                     right=np.max(fibers)*3)
@@ -182,8 +206,8 @@ def normality_plot(dist="uniform",
     #
     axs[0].set_xlabel("N",fontsize=font)
     axs[1].set_xlabel("N",fontsize=font)
-    axs[0].set_ylabel(r"$\langle\tau\rangle$",fontsize=font)
-    axs[1].set_ylabel(r"$\sigma_{\tau}^{2}$",fontsize=font)
+    axs[0].set_ylabel(r"$p value$",fontsize=font)
+    axs[1].set_ylabel(r"$p value$",fontsize=font)
 
 
     axs[1].legend(loc='center left',
