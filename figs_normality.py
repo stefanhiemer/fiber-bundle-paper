@@ -1,8 +1,9 @@
 import os
 from itertools import product
+from time import time
 
 import numpy as np 
-from scipy.stats import shapiro,anderson,kstest,wasserstein
+from scipy.stats import norm,shapiro,anderson,kstest,wasserstein_distance
 
 import matplotlib.pyplot as plt 
 from read_h5 import read_h5 
@@ -15,7 +16,7 @@ def normality_plot(dist="uniform",
                            11,12,13,14,15,16,17,18,19,20,
                            30,40,50,60,70,80,90,100,200,400,600,800,
                            1000,2000,4000,6000,8000,10000,20000,100000], 
-                   h5file="fiber-bundles.h5"):
+                   h5file="/FASTTEMP/shiemer/fiber-bundles-safe.h5"):
     """
     Plot Fig. 4 and 5. in paper. 
     
@@ -82,6 +83,8 @@ def normality_plot(dist="uniform",
             if done_already:
                 i = indices[ind]
                 _statistics.append(statistics[i])
+                _mean.append(mean[i])
+                _var.append(var[i])
 
             else:
                 print("Calculate: ", load,temp,k,fiber)
@@ -95,17 +98,27 @@ def normality_plot(dist="uniform",
 
                 # extract lifetimes
                 lifetimes = np.array([t[0][-1] for t in timeseries])
-
+                #
+                _mean.append(np.mean(lifetimes))
+                _var.append(np.var(lifetimes))
+                #
+                andson = anderson(lifetimes,
+                                  dist="norm",
+                                  method="interpolate")
+                andson = tuple([andson.statistic, andson.pvalue])
+                #
+                kolmog = kstest(rvs=lifetimes,
+                                cdf="norm",
+                                args=(mean[-1], var[-1]),
+                method = "exact",
+                alternative = "two-sided",
+                nan_policy = "omit")
+                kolmog = tuple([kolmog.statistic, kolmog.pvalue])
                 #
                 _statistics.append(shapiro(x=lifetimes,
-                                           nan_policy="omit")+\
-                                   anderson(lifetimes,
-                                            dist="norm", 
-                                            method="interpolated")+\
-                                   kstest(rvs=lifetimes,
-                                          method="exact",
-                                          alternative="two-sided",
-                                          nan_policy="omit"))
+                                           nan_policy="omit") + \
+                                   andson + \
+                                   kolmog)
             #
             ind += 1
 
@@ -115,6 +128,8 @@ def normality_plot(dist="uniform",
     else:
         combs = list(product(loads,temps,ks,fibers))
         statistics = []
+        mean = []
+        var = []
         for load,temp,k,fiber in combs:
             #
             timeseries,n_fibers,aval = read_h5(fibers=fiber,
@@ -127,18 +142,35 @@ def normality_plot(dist="uniform",
             # extract lifetimes
             lifetimes = np.array([t[0][-1] for t in timeseries])
             #
-            _statistics.append(shapiro(x=lifetimes,
+            mean.append(np.mean(lifetimes))
+            var.append(np.var(lifetimes))
+            #
+            t = time()
+            andson = anderson(lifetimes,
+                              dist="norm",
+                              method="interpolate")
+            andson = tuple([andson.statistic, andson.pvalue])
+            print("anderson: ",time()-t)
+            #
+            kolmog = kstest(rvs=lifetimes,
+                            cdf="norm",
+                            args=(mean[-1],np.sqrt(var[-1])),
+                            method="exact",
+                            alternative="two-sided",
+                            nan_policy="omit")
+            kolmog = tuple([kolmog.statistic,kolmog.pvalue])
+            print("Kolmogorov: ", time() - t)
+            #
+            statistics.append(shapiro(x=lifetimes,
                                        nan_policy="omit")+\
-                               anderson(lifetimes,
-                                        dist="norm", 
-                                        method="interpolated")+\
-                               kstest(rvs=lifetimes,
-                                      method="exact",
-                                      alternative="two-sided",
-                                      nan_policy="omit"))
+                               andson+\
+                               kolmog+\
+                               tuple([wasserstein_distance(lifetimes,
+                                        norm.rvs(loc=mean[-1], scale=np.sqrt(var[-1]),
+                                                 size=len(lifetimes)))]))
+            print("Shapiro: ", time() - t)
         #
-        mean = np.loadtxt("mean-comparison_"+dist+".csv")
-        var = np.loadtxt("var-comparison_"+dist+".csv")
+        mean, var = np.array(mean), np.array(var)
         #
         combs = np.array(combs).astype(float)
 
@@ -148,9 +180,10 @@ def normality_plot(dist="uniform",
         np.savetxt("comb-normality_"+dist+".csv",combs,
                    header="load,temp,k,fiber")
         np.savetxt("normality_"+dist+".csv", statistics,
-                   header="shapiro-wilkinson statistic,shapiro-wilkinson p-value"+\
-                          "anderson statistic,anderson p-value"+\
-                          "")
+                   header="shapiro-wilkinson statistic, shapiro-wilkinson p-value, "+\
+                          "anderson statistic, anderson p-value, "+\
+                          "kolmogorov-smirnov statistic, kolmogorov-smirnov p-value, "+\
+                          "empirical wasserstein distance", )
     #
     N = np.arange(1,np.max(fibers)+1)
     #
@@ -166,17 +199,17 @@ def normality_plot(dist="uniform",
         mask = (_temps == temp) & (_loads==load)
 
         # plot shapiro
-        axs[0].scatter(_fibers[mask],statistics[mask,1],
+        axs[0].scatter(_fibers[mask],statistics[mask,-2],
                        color=colors(i),
                        label=str(temp)+", "+str(np.round(load,3)))
-        axs[1].scatter(_fibers[mask],statistics[mask,1],
+        axs[1].scatter(_fibers[mask],statistics[mask,-2],
                        color=colors(i),
                        label=str(temp)+", "+str(np.round(load,3)))
         # plot anderson
-        axs[0].scatter(_fibers[mask],statistics[mask,3],
+        axs[0].scatter(_fibers[mask],statistics[mask,-2],
                        color=colors(i),
                        label=str(temp)+", "+str(np.round(load,3)))
-        axs[1].scatter(_fibers[mask],statistics[mask,3],
+        axs[1].scatter(_fibers[mask],statistics[mask,-2],
                        color=colors(i),
                        label=str(temp)+", "+str(np.round(load,3)))
         i += 1
@@ -262,14 +295,8 @@ def find_matching_rows(A, B):
 if __name__ == "__main__":
     normality_plot(dist="uniform",
                    loads=[0.125, 0.15, 0.175],
-                   fibers=[1,2,3,4,5,6,7,8,9,10,
-                        11,12,13,14,15,16,17,18,19,20,
-                        30,40,50,60,70,80,90,100,200,400,600,800,
-                        1000,2000,4000,6000,8000,10000,20000,100000])
-    
+                   fibers=[10000,20000,100000])
     normality_plot(dist="weibull",
                 loads=np.array([0.5, 0.6, 0.7])*np.exp(-1),
-                fibers=[10,11,12,13,14,15,16,17,18,19,20,
-                        30,40,50,60,70,80,90,100,200,400,600,800,
-                        1000,2000,4000,6000,8000,
+                fibers=[
                         10000,20000,100000])

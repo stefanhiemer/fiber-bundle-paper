@@ -18,7 +18,7 @@ def moment_plot(dist="uniform",
                         11,12,13,14,15,16,17,18,19,20,
                         30,40,50,60,70,80,90,100,200,400,600,800,
                         1000,2000,4000,6000,8000,10000,20000,100000], 
-                h5file="fiber-bundles-safe.h5"):
+                h5file="fiber-bundles.h5"):
     """
     Plot Fig. 4 and 5 in paper. 
     
