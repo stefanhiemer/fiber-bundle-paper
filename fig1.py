@@ -40,7 +40,7 @@ def moment_plot(loads=[0.5,0.7,0.9],
                                            k=1,
                                            distribution="identical",
                                            subset=None,
-                                           h5file="fiber-bundles.h5")
+                                           h5file="fiber-bundles-safe.h5")
 
         # extract lifetimes
         lifetimes = np.array([t[0][-1] for t in timeseries])

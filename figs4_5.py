@@ -18,7 +18,7 @@ def moment_plot(dist="uniform",
                         11,12,13,14,15,16,17,18,19,20,
                         30,40,50,60,70,80,90,100,200,400,600,800,
                         1000,2000,4000,6000,8000,10000,20000,100000], 
-                h5file="fiber-bundles.h5"):
+                h5file="fiber-bundles-safe.h5"):
     """
     Plot Fig. 4 and 5 in paper. 
     
@@ -298,6 +298,12 @@ def find_matching_rows(A, B):
     return mask, np.array(indices)
 
 if __name__ == "__main__":
+    
+    moment_plot(dist="identical",
+                loads=[0.5, 0.7, 0.9],
+                fibers=[1,10,100,1000,10000])
+    import sys 
+    sys.exit()
     moment_plot(dist="uniform",
                 loads=[0.125, 0.15, 0.175],
                 fibers=[1,2,3,4,5,6,7,8,9,10,
